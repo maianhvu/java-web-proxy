@@ -16,11 +16,10 @@ public class Request {
     HOST_ADDRESS ("Host-Address"),
     PORT         ("Port");
 
-    private String key;
+    public final String key;
     Field(String k) {
       this.key = k;
     }
-    public String getKey() { return this.key; }
   }
 
   /**
@@ -133,15 +132,15 @@ public class Request {
    * Set the value for a field inside fieldsMap
    */
   public void set(Field field, String value) {
-    this.fieldsMap.put(field.getKey(), value);
+    this.fieldsMap.put(field.key, value);
   }
 
   /**
    * Convenient getter for fieldsMap
    */
   public String get(Field field) {
-    if (!this.fieldsMap.containsKey(field.getKey())) return null;
-    return this.fieldsMap.get(field.getKey());
+    if (!this.fieldsMap.containsKey(field.key)) return null;
+    return this.fieldsMap.get(field.key);
   }
 
   /**

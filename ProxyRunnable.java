@@ -4,17 +4,25 @@ import java.net.*;
 public class ProxyRunnable implements Runnable {
 
   /**
+   * Constants
+   */
+  private static final boolean CACHING_ENABLED = false;
+  private static final boolean CENSOR_ENABLED = true;
+
+  /**
    * Properties
    */
   private Socket clientSocket;
   private ProxyCache cache;
+  private CensorEngine censorEngine;
 
   /**
    * Constructor
    */
-  public ProxyRunnable(Socket clientSocket, ProxyCache cache) {
+  public ProxyRunnable(Socket clientSocket, ProxyCache cache, CensorEngine engine) {
     this.clientSocket = clientSocket;
     this.cache = cache;
+    this.censorEngine = engine;
   }
 
   /**
@@ -36,7 +44,7 @@ public class ProxyRunnable implements Runnable {
       String uri = null;
       BufferedOutputStream toClient = new BufferedOutputStream(this.clientSocket.getOutputStream());
       // Checks for cached item
-      if (this.cache.contains(uri = request.get(Request.Field.URI))) {
+      if (CACHING_ENABLED && this.cache.contains(uri = request.get(Request.Field.URI))) {
         // Reads from cache
         BufferedInputStream fromCache = new BufferedInputStream(this.cache.getInputStream(uri));
         Response response = Response.read(fromCache);
@@ -50,7 +58,7 @@ public class ProxyRunnable implements Runnable {
         return;
       }
 
-      // If cached item doesn't exist
+      // If cached item doesn't exist or caching is disabled
       // Create a socket that connects to the remote server
       Socket remoteSocket = request.createSocket();
 
@@ -69,8 +77,12 @@ public class ProxyRunnable implements Runnable {
       BufferedInputStream fromRemote = new BufferedInputStream(remoteSocket.getInputStream());
       Response response = Response.read(fromRemote);
 
+      // Add censor engine if censoring is enabled
+      if (CENSOR_ENABLED) response.setCensorEngine(this.censorEngine);
+
       // Forward request to client and cache
-      BufferedOutputStream toCache = new BufferedOutputStream(this.cache.getOutputStream(uri));
+      BufferedOutputStream toCache = null;
+      if (CACHING_ENABLED) toCache = new BufferedOutputStream(this.cache.getOutputStream(uri));
       response.forward(toClient, toCache);
 
       toClient.close();

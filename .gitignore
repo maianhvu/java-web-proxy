@@ -1,2 +1,5 @@
 *.class
 .proxy-cache/
+
+*Test.java
+censor.txt

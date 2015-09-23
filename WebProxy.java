@@ -10,6 +10,7 @@ public class WebProxy implements Runnable {
   private boolean stopped;
   private ServerSocket welcomeSocket;
   private ProxyCache cache;
+  private CensorEngine censorEngine;
 
   /**
    * Constructor
@@ -19,6 +20,7 @@ public class WebProxy implements Runnable {
     this.port = port;
     this.stopped = true;
     this.cache = new ProxyCache();
+    this.censorEngine = CensorEngine.seed("censor.txt");
   }
 
   /**
@@ -43,7 +45,8 @@ public class WebProxy implements Runnable {
         e.printStackTrace();
       }
       (new Thread(new ProxyRunnable(clientSocket,
-                                    cache
+                                    this.cache,
+                                    this.censorEngine
                                     ))).start();
     }
   }
