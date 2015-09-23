@@ -1,4 +1,5 @@
 import java.io.*;
+import java.net.*;
 import java.util.*;
 import java.util.regex.*;
 
@@ -113,6 +114,11 @@ public class Request {
       }
     }
 
+    // Set raw data and length
+    this.rawData = b;
+    this.length = len;
+
+    // Set validity
     this.valid = true;
   }
 
@@ -138,6 +144,9 @@ public class Request {
     return this.fieldsMap.get(field.getKey());
   }
 
+  /**
+   * For debugging purposes
+   */
   public String toString() {
     StringBuilder sb = new StringBuilder();
     for (String k : this.fieldsMap.keySet()) {
@@ -146,5 +155,23 @@ public class Request {
     }
     sb.append("\r\n");
     return sb.toString();
+  }
+
+  public Socket createSocket() throws IOException {
+    String hostAddr = get(Field.HOST_ADDRESS);
+    if (!this.isValid() || hostAddr == null) return null;
+    int port = DEFAULT_PORT;
+    try {
+      port = Integer.parseInt(get(Field.PORT));
+    } catch (Exception e) {
+      e.printStackTrace();
+      port = DEFAULT_PORT;
+    } finally {
+      return new Socket(hostAddr, port);
+    }
+  }
+
+  public void fire(OutputStream dest) throws IOException {
+    dest.write(this.rawData, 0, this.length);
   }
 }
