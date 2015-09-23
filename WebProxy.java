@@ -69,8 +69,19 @@ public class WebProxy implements Runnable {
    * Main executable method
    */
   public static void main(String[] args) {
-    int port = 8080;
-    WebProxy proxy = new WebProxy(port);
-    (new Thread(proxy)).start();
+    // Check argument lengths
+    if (args.length < 1) {
+      System.out.println("Usage: java WebProxy <port>");
+      return;
+    }
+    // Try to parse port and start server
+    int port;
+    try {
+      port = Integer.parseInt(args[0]);
+      WebProxy proxy = new WebProxy(port);
+      (new Thread(proxy)).start();
+    } catch (NumberFormatException e) {
+      System.out.println("Usage: java WebProxy <port>");
+    }
   }
 }
