@@ -9,6 +9,7 @@ public class WebProxy implements Runnable {
   private int port;
   private boolean stopped;
   private ServerSocket welcomeSocket;
+  private ProxyCache cache;
 
   /**
    * Constructor
@@ -17,6 +18,7 @@ public class WebProxy implements Runnable {
   public WebProxy(int port) {
     this.port = port;
     this.stopped = true;
+    this.cache = new ProxyCache();
   }
 
   /**
@@ -40,7 +42,9 @@ public class WebProxy implements Runnable {
       } catch (IOException e) {
         e.printStackTrace();
       }
-      (new Thread(new ProxyRunnable(clientSocket))).start();
+      (new Thread(new ProxyRunnable(clientSocket,
+                                    cache
+                                    ))).start();
     }
   }
 

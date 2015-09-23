@@ -8,7 +8,7 @@ public class Request {
   /**
    * Types
    */
-  public enum Field {
+  public static enum Field {
     METHOD       ("Method"),
     URI          ("URI"),
     HTTP_VERSION ("Http-Version"),
