@@ -42,7 +42,7 @@ public class Request {
    * Constructor
    * @param inputStream
    */
-  public Request(InputStream inputStream) throws IOException {
+  public Request(BufferedInputStream inputStream) throws IOException {
     byte[] b = new byte[8192];
     int len = inputStream.read(b);
 
@@ -171,7 +171,11 @@ public class Request {
     }
   }
 
-  public void fire(OutputStream dest) throws IOException {
+  /**
+   * Fire this request to the destination BufferedWriter
+   */
+  public void fire(BufferedOutputStream dest) throws IOException {
     dest.write(this.rawData, 0, this.length);
+    dest.flush();
   }
 }

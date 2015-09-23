@@ -17,10 +17,13 @@ public class ProxyRunnable implements Runnable {
     this.cache = cache;
   }
 
+  /**
+   * Runnable implementation
+   */
   public void run() {
     try {
       // Read request from client
-      InputStream fromClient = this.clientSocket.getInputStream();
+      BufferedInputStream fromClient = new BufferedInputStream(this.clientSocket.getInputStream());
       Request request = new Request(fromClient);
 
       // Check request's validity
@@ -31,11 +34,11 @@ public class ProxyRunnable implements Runnable {
       }
 
       String uri = null;
-      OutputStream toClient = this.clientSocket.getOutputStream();
+      BufferedOutputStream toClient = new BufferedOutputStream(this.clientSocket.getOutputStream());
       // Checks for cached item
       if (this.cache.contains(uri = request.get(Request.Field.URI))) {
         // Reads from cache
-        InputStream fromCache = this.cache.getInputStream(uri);
+        BufferedInputStream fromCache = new BufferedInputStream(this.cache.getInputStream(uri));
         Response response = Response.read(fromCache);
         response.forward(toClient);
 
@@ -59,15 +62,15 @@ public class ProxyRunnable implements Runnable {
       }
 
       // Fire request to remote server
-      OutputStream toRemote = remoteSocket.getOutputStream();
+      BufferedOutputStream toRemote = new BufferedOutputStream(remoteSocket.getOutputStream());
       request.fire(toRemote);
 
       // Prepare streams for forwarding of requests
-      InputStream fromRemote = remoteSocket.getInputStream();
+      BufferedInputStream fromRemote = new BufferedInputStream(remoteSocket.getInputStream());
       Response response = Response.read(fromRemote);
 
       // Forward request to client and cache
-      OutputStream toCache   = this.cache.getOutputStream(uri);
+      BufferedOutputStream toCache = new BufferedOutputStream(this.cache.getOutputStream(uri));
       response.forward(toClient, toCache);
 
       toClient.close();
