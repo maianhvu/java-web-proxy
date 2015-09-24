@@ -6,7 +6,7 @@ public class ProxyRunnable implements Runnable {
   /**
    * Constants
    */
-  private static final boolean CACHING_ENABLED = false;
+  private static final boolean CACHING_ENABLED = true;
   private static final boolean CENSOR_ENABLED = true;
 
   /**
@@ -29,9 +29,13 @@ public class ProxyRunnable implements Runnable {
    * Runnable implementation
    */
   public void run() {
+    // Prepare the stream toClient so that we can send error response
+    BufferedOutputStream toClient = null;
+    // Have this one too so we can close it properly
+    BufferedInputStream fromClient = null;
     try {
       // Read request from client
-      BufferedInputStream fromClient = new BufferedInputStream(this.clientSocket.getInputStream());
+      fromClient = new BufferedInputStream(this.clientSocket.getInputStream());
       Request request = new Request(fromClient);
 
       // Check request's validity
@@ -42,11 +46,11 @@ public class ProxyRunnable implements Runnable {
       }
 
       String uri = null;
-      BufferedOutputStream toClient = new BufferedOutputStream(this.clientSocket.getOutputStream());
+      toClient = new BufferedOutputStream(this.clientSocket.getOutputStream());
       // Checks for cached item
       if (CACHING_ENABLED && this.cache.contains(uri = request.get(Request.Field.URI))) {
         // Reads from cache
-        BufferedInputStream fromCache = this.cache.getContentFromURI(uri).getInputStream();
+        BufferedInputStream fromCache = this.cache.getFromURI(uri).getInputStream();
         Response response = Response.read(fromCache);
         response.forward(toClient);
 
@@ -82,7 +86,7 @@ public class ProxyRunnable implements Runnable {
 
       // Forward request to client and cache
       BufferedOutputStream toCache = null;
-      if (CACHING_ENABLED) toCache = this.cache.getContentFromURI(uri).getOutputStream();
+      if (CACHING_ENABLED) toCache = this.cache.create(uri).getOutputStream();
       response.forward(toClient, toCache);
 
       toClient.close();
@@ -91,8 +95,27 @@ public class ProxyRunnable implements Runnable {
       fromClient.close();
 
       remoteSocket.close();
+
+      // WARNING: HARDCODE ERROR HANDLING ACTION BELOW
     } catch (IOException e) {
-      e.printStackTrace();
+      if (toClient != null) {
+        Response res = Response.createBadGateway();
+        // Try to send this response to client
+        try {
+          res.forward(toClient);
+        } catch (IOException e2) {
+          e2.printStackTrace();
+        } finally {
+          try {
+            toClient.close();
+            fromClient.close();
+          } catch (IOException e3) {
+            e3.printStackTrace();
+          }
+        }
+      } else {
+        e.printStackTrace();
+      }
     } finally {
       try {
         this.clientSocket.close();

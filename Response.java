@@ -1,4 +1,6 @@
 import java.io.*;
+import java.text.*;
+import java.util.*;
 
 public class Response {
 
@@ -20,6 +22,24 @@ public class Response {
    */
   public static Response read(BufferedInputStream source) {
     return new Response(source);
+  }
+
+  public static Response createBadGateway() {
+    // Prepare date formatter into server-acceptable date formats
+    SimpleDateFormat dateFormat = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z", Locale.ENGLISH);
+    dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
+
+    // Begin request data
+    StringBuilder sb = new StringBuilder();
+    sb.append("HTTP/1.0 502 Bad Gateway\r\n");
+    sb.append("Date: ").append(dateFormat.format(new Date())).append("\r\n");
+    sb.append("Content-Length: 134\r\n");
+    sb.append("Connection: close\r\n\r\n");
+
+    sb.append("<!doctype html><html><head><meta charset='UTF-8'><title>502 - Bad Gateway</title>");
+    sb.append("</head><body><h1>502 - Bad Gateway</h1></body></html>");
+
+    return new Response(new BufferedInputStream(new ByteArrayInputStream(sb.toString().getBytes())));
   }
 
   /**
@@ -44,11 +64,6 @@ public class Response {
       int eoh;
       for (eoh = 0; eoh < len && (b[eoh] != '\r' || !(new String(b, eoh, 4)).equals("\r\n\r\n")); eoh++);
       String header  = new String(b, 0, eoh);
-
-      // Split first line into <httpVersion> <statusCode> <statusName>
-      String[] params = header.substring(0, header.indexOf("\r\n")).split("\\s+", 3);
-      String statusCode  = params[1];
-      // TODO: Process statusCode
 
       // Only censor if type is text
       boolean censor = this.censorEngine != null && header.indexOf("Content-Type: text") != -1;
