@@ -4,6 +4,11 @@ import java.util.*;
 public class CensorEngine {
 
   /**
+   * Constants
+   */
+  private static final double GROW_FACTOR = 2.0; // Describes how fast the temp array resize
+
+  /**
    * Properties
    */
   private HashSet<String> wordsSet;
@@ -50,9 +55,9 @@ public class CensorEngine {
   /**
    * Process the input, output a new byte array with the censored text
    */
-  public Result process(byte[] input, boolean endOfHeader) {
+  public Result process(byte[] input, int bufferSize, boolean endOfHeader) {
     // Temporary array to store the processed output
-    byte[] tmp = new byte[input.length*2];
+    byte[] tmp = new byte[bufferSize];
 
     // Censor character
     byte censor = (byte)'-';
@@ -75,6 +80,7 @@ public class CensorEngine {
       // If is blank space or not yet end of header, copy as is
       if (!endOfHeader || !isWordChar(input[i])) {
         tmp[cursor++] = input[i++];
+        if (cursor >= tmp.length) tmp = resize(tmp);
         continue;
       }
 
@@ -84,20 +90,35 @@ public class CensorEngine {
       // Expect word to not be censored first, copy as is
       while (isWordChar(input[i]) && i < input.length - 1) {
         tmp[cursor++] = input[i++];
+        if (cursor >= tmp.length) tmp = resize(tmp);
       }
 
       // If word needs to be censored, go back and censor
       String word = new String(input, start, i - start).toLowerCase();
       if (this.wordsSet.contains(word)) {
+        cursor = cursorStart + censorLength;
+        if (cursor >= tmp.length) tmp = resize(tmp);
         for (int j = cursorStart; j < cursorStart + censorLength; j++) {
           tmp[j] = censor;
         }
-        cursor = cursorStart + censorLength;
       }
     }
 
     // Return result
     return new Result(tmp, cursor, endOfHeader);
+  }
+
+  public Result process(byte[] input, boolean endOfHeader) {
+    return process(input, input.length, endOfHeader);
+  }
+
+  /**
+   * Doubles the size of an array
+   */
+  private byte[] resize(byte[] b) {
+    byte[] tmp = new byte[(int) Math.round(b.length * GROW_FACTOR)];
+    System.arraycopy(b, 0, tmp, 0, b.length);
+    return tmp;
   }
 
   public class Result {
