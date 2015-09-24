@@ -56,73 +56,57 @@ public class CensorEngine {
    * Process the input, output a new byte array with the censored text
    */
   public byte[] process(byte[] input, int offset, int length) {
-    // If offset is beyond length, return original
-    if (offset >= input.length) return input;
-
-    // Temporary array to store the processed output
+    // Prepare censoring material
+    byte[] censor = "---".getBytes();
+    // Create temporary array
     byte[] tmp = new byte[input.length];
-
-    // Censor character
-    byte censor = (byte)'-';
-    // Which is 3 chars long (---)
-    int censorLength = 3;
-
-    // Copy uncensored part at first
+    // Copy offset
     System.arraycopy(input, 0, tmp, 0, offset);
-
-    // Current pointer to tmp array
-    int cursor = offset;
-
-    // Current pointer to input array
-    int i = offset;
-
-    // Find out end position
+    // Set cursors
+    int tmp_c = offset;
+    int input_c = offset;
+    // Set endpoint
     int end;
-    if (length == -1) {
-      // Censor till the end
-      end = input.length;
+    if (length < 0) {
+      // Reads till the end
+      end = input.length - 1;
     } else {
       end = offset + length;
       if (end > input.length) end = input.length;
     }
-
-    while (i < end && input[i] > 0) {
-      // If is blank space or not yet end of header, copy as is
-      if (!isWordChar(input[i])) {
-        tmp[cursor++] = input[i++];
-        if (cursor >= tmp.length) tmp = extend(tmp);
-        continue;
+    // Loop and censor
+    while (input_c < end) {
+      // If is not word char, copy exactly
+      while (input_c < end && !isWordChar(input[input_c])) {
+        tmp[tmp_c++] = input[input_c++];
+        if (tmp_c >= tmp.length) tmp = extend(tmp);
       }
-
-      // If is word character
-      int start = i;
-      int cursorStart = cursor;
-      // Expect word to not be censored first, copy as is
-      while (isWordChar(input[i]) && i < end - 1) {
-        tmp[cursor++] = input[i++];
-        if (cursor >= tmp.length) tmp = extend(tmp);
+      // If encounter a word character, start keeping track
+      int wordStart = tmp_c;
+      // Assume that word is not censored, keep moving forward
+      // and copy exactly
+      while (input_c < end && isWordChar(input[input_c])) {
+        tmp[tmp_c++] = input[input_c++];
+        if (tmp_c >= tmp.length) tmp = extend(tmp);
       }
-
-      // If word needs to be censored, go back and censor
-      String word = new String(input, start, i - start).toLowerCase();
+      if (wordStart + censor.length > tmp.length) tmp = extend(tmp);
+      // Start forming word
+      String word = new String(tmp, wordStart, tmp_c - wordStart).toLowerCase();
+      // Censor if exists
       if (this.wordsSet.contains(word)) {
-        cursor = cursorStart + censorLength;
-        if (cursor >= tmp.length) tmp = extend(tmp);
-        for (int j = cursorStart; j < cursorStart + censorLength; j++) {
-          tmp[j] = censor;
+        for (int i = 0; i < censor.length; i++) {
+          tmp[wordStart+i] = censor[i];
         }
+        // Set cursor
+        tmp_c = wordStart + censor.length;
       }
     }
-
-    // Resize to appropriate length
-    tmp = resize(tmp, cursor + (input.length - i));
-
-    // Copy end part which is not censored
-    if (end < input.length) {
-      System.arraycopy(input, i, tmp, cursor, input.length - i);
+    // Resize
+    tmp = resize(tmp, tmp_c + input.length - input_c);
+    // Copy residual bytes
+    if (length > 0) {
+      System.arraycopy(input, offset + length, tmp, tmp_c, input.length - input_c);
     }
-
-    // Return result
     return tmp;
   }
 
