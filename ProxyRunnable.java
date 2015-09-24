@@ -46,7 +46,7 @@ public class ProxyRunnable implements Runnable {
       // Checks for cached item
       if (CACHING_ENABLED && this.cache.contains(uri = request.get(Request.Field.URI))) {
         // Reads from cache
-        BufferedInputStream fromCache = new BufferedInputStream(this.cache.getInputStream(uri));
+        BufferedInputStream fromCache = this.cache.getContentFromURI(uri).getInputStream();
         Response response = Response.read(fromCache);
         response.forward(toClient);
 
@@ -82,7 +82,7 @@ public class ProxyRunnable implements Runnable {
 
       // Forward request to client and cache
       BufferedOutputStream toCache = null;
-      if (CACHING_ENABLED) toCache = new BufferedOutputStream(this.cache.getOutputStream(uri));
+      if (CACHING_ENABLED) toCache = this.cache.getContentFromURI(uri).getOutputStream();
       response.forward(toClient, toCache);
 
       toClient.close();

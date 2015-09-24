@@ -1,7 +1,8 @@
 import java.io.*;
 import java.net.*;
 import java.util.*;
-import java.util.regex.*;
+import java.util.regex.*; // For Pattern and Matcher
+import java.text.*; // For SimpleDateFormat
 
 public class Request {
 
@@ -14,7 +15,8 @@ public class Request {
     HTTP_VERSION ("Http-Version"),
     HOST         ("Host"),
     HOST_ADDRESS ("Host-Address"),
-    PORT         ("Port");
+    PORT         ("Port"),
+    IF_MODIFIED_SINCE("If-Modified-Since");
 
     public final String key;
     Field(String k) {
@@ -26,7 +28,7 @@ public class Request {
    * Constants
    */
   private static final int DEFAULT_PORT = 80;
-  private static final String URI_PATTERN = "^(?:http(?:s)?://)([^/]+)(:\\d+)?(?:.+)?$";
+  private static final String URI_PATTERN = "^(?:http(?:s)?://)?([^/]+)(:\\d+)?(?:.+)?$";
 
   /**
    * Properties
@@ -39,7 +41,7 @@ public class Request {
 
   /**
    * Constructor
-   * @param inputStream
+   * @param inputStream The stream to read the request data from
    */
   public Request(BufferedInputStream inputStream) throws IOException {
     byte[] b = new byte[8192];
@@ -122,6 +124,66 @@ public class Request {
   }
 
   /**
+   * Constructing an If-Modified-Since request
+   */
+  private Request() { this.fieldsMap = new LinkedHashMap<>(); }
+
+  public static Request ifModifiedSince(String uri, Date date) {
+    // Set defaults for this constructor
+    final String method = "GET";
+    final String httpVersion = "HTTP/1.0";
+    // Prepare date formatter into server-acceptable date formats
+    SimpleDateFormat dateFormat = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z", Locale.ENGLISH);
+    dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
+    // Use regex to parse the URI
+    Pattern uriPattern = Pattern.compile(URI_PATTERN);
+    Matcher m = uriPattern.matcher(uri);
+
+    // Initialize request
+    Request req = new Request();
+
+    if (m.matches()) {
+      // Start building request.
+      StringBuilder sb = new StringBuilder();
+      sb.append(method).append(" ").append(uri).append(" ").append(httpVersion).append("\r\n");
+
+      String host = m.group(1);
+      String port = Integer.toString(DEFAULT_PORT);
+      if (m.group(2) != null) {
+         // Append port to Host record, if exists
+         // If there is none, just omit
+        port = m.group(2);
+        host += ":" + port;
+      }
+      // Host field
+      sb.append(Field.HOST.key).append(": ").append(host).append("\r\n");
+      // If modified since field
+      sb.append(Field.IF_MODIFIED_SINCE.key).append(": ");
+      sb.append(dateFormat.format(date)).append("\r\n\r\n");
+
+      // Set raw data
+      byte[] data = sb.toString().getBytes();
+      req.rawData = data;
+      req.length  = data.length;
+
+      // Set appropriate fields
+      req.set(Field.METHOD, method);
+      req.set(Field.URI, uri);
+      req.set(Field.HTTP_VERSION, httpVersion);
+
+      req.set(Field.HOST, host);
+      req.set(Field.HOST_ADDRESS, m.group(1));
+      req.set(Field.PORT, port);
+
+      req.valid = true;
+      return req;
+    } else {
+      req.valid = false;
+      return req;
+    }
+  }
+
+  /**
    * Check if the initialized request is valid
    */
   public boolean isValid() {
@@ -141,19 +203,6 @@ public class Request {
   public String get(Field field) {
     if (!this.fieldsMap.containsKey(field.key)) return null;
     return this.fieldsMap.get(field.key);
-  }
-
-  /**
-   * For debugging purposes
-   */
-  public String toString() {
-    StringBuilder sb = new StringBuilder();
-    for (String k : this.fieldsMap.keySet()) {
-      if (sb.length() != 0) { sb.append("\r\n"); }
-      sb.append(k).append(": ").append(this.fieldsMap.get(k));
-    }
-    sb.append("\r\n");
-    return sb.toString();
   }
 
   public Socket createSocket() throws IOException {
@@ -176,5 +225,21 @@ public class Request {
   public void fire(BufferedOutputStream dest) throws IOException {
     dest.write(this.rawData, 0, this.length);
     dest.flush();
+  }
+
+  /**
+   * For debugging purposes
+   */
+  public String getFields() {
+    StringBuilder sb = new StringBuilder();
+    for (String k : this.fieldsMap.keySet()) {
+      if (sb.length() != 0) { sb.append("\n"); }
+      sb.append(k).append(": ").append(this.fieldsMap.get(k));
+    }
+    return sb.toString();
+  }
+
+  public String toString() {
+    return new String(this.rawData,0,this.length);
   }
 }

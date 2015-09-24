@@ -73,15 +73,10 @@ public class ProxyCache {
     return f.exists();
   }
 
-  public OutputStream getOutputStream(String URI) throws IOException {
-    return getContentFromURI(URI).getOutputStream();
-  }
-
-  public InputStream getInputStream(String URI) throws IOException {
-    return getContentFromURI(URI).getInputStream();
-  }
-
-  private CachedContent getContentFromURI(String URI) throws IOException {
+  /**
+   * Get the CachedContent object from the URI
+   */
+  public CachedContent getContentFromURI(String URI) throws IOException {
     CachedContent c;
     if (!this.cacheMap.containsKey(URI)) {
       File f = new File(pathFromURI(URI));
@@ -92,22 +87,4 @@ public class ProxyCache {
     }
     return c;
   }
-
-  private class CachedContent {
-    private File cacheFile;
-
-    public CachedContent(File f) {
-      this.cacheFile = f;
-    }
-
-    public OutputStream getOutputStream() throws IOException {
-      return new FileOutputStream(this.cacheFile);
-    }
-
-    public InputStream getInputStream() throws IOException {
-      return new FileInputStream(this.cacheFile);
-    }
-
-  }
-
 }
