@@ -73,7 +73,7 @@ public class Response {
         writeBytes(b, eoh + 4, dests);
 
         // Read the rest into a string and write
-        b = this.censorEngine.process(new String(b, eoh + 4, b.length - eoh - 4)).getBytes();
+        b = this.censorEngine.process(new String(b, eoh + 4, len - eoh - 4)).getBytes();
         len = b.length;
       }
       writeBytes(b, len, dests);
