@@ -36,30 +36,60 @@ public class Response {
   public void forward(BufferedOutputStream... dests) throws IOException {
     byte[] b = new byte[8192];
     int len;
-    // Keep track if the censorship engine has already read through the header
-    // We don't want to replace any characters inside the header
-    boolean endOfHeader = false;
-    // Start reading from the source
-    while ((len = this.dataSource.read(b)) > 0) {
-      if (this.censorEngine != null) {
-        // Censor
-        CensorEngine.Result result = this.censorEngine.process(b, endOfHeader);
-        b = result.data;
-        len = result.length;
-        endOfHeader = result.endOfHeader;
+
+    // Read header first. This helps to extract out header info,
+    // as well as preventing the censor engine from censoring header
+    if ((len = this.dataSource.read(b)) > 0) {
+      // Iterate forward to find end of header
+      int eoh;
+      for (eoh = 0; eoh < len && (b[eoh] != '\r' || !(new String(b, eoh, 4)).equals("\r\n\r\n")); eoh++);
+      String header  = new String(b, 0, eoh);
+
+      // Split first line into <httpVersion> <statusCode> <statusName>
+      String[] params = header.substring(0, header.indexOf("\r\n")).split("\\s+", 3);
+      String statusCode  = params[1];
+      // TODO: Process statusCode
+
+      // Only censor if type is text
+      boolean censor = this.censorEngine != null && header.indexOf("Content-Type: text") != -1;
+      if (censor) {
+        b = this.censorEngine.process(b, eoh + 4, -1);
+        len = b.length;
       }
-      // Write to all destinations
-      for (BufferedOutputStream dest : dests) {
-        if (dest != null) {
-          dest.write(b, 0, len);
+
+      // Write initial data
+      writeBytes(b, len, dests);
+
+      // Forward data
+      while ((len = this.dataSource.read(b)) > 0) {
+        // Write to all non-null streams
+        if (censor) {
+          b = this.censorEngine.process(b);
+          len = b.length;
         }
+        writeBytes(b, len, dests);
       }
+
+      // Flush all streams
+      flushAll(dests);
     }
-    // Flush all destination streams
+  }
+
+  /**
+   * Private convenient method to write data to all streams
+   */
+  private static void writeBytes(byte[] data, int length, BufferedOutputStream[] dests) throws IOException {
     for (BufferedOutputStream dest : dests) {
-      if (dest != null) {
-        dest.flush();
-      }
+      if (dest != null) dest.write(data, 0, length);
+    }
+  }
+
+  /**
+   * Private convenient method to flush all treams
+   */
+  private static void flushAll(BufferedOutputStream[] dests) throws IOException {
+    for (BufferedOutputStream dest : dests) if (dest != null) {
+      dest.flush();
     }
   }
 }
