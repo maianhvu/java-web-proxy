@@ -6,7 +6,7 @@ public class ProxyRunnable implements Runnable {
   /**
    * Constants
    */
-  private static final boolean CACHING_ENABLED = false;
+  private static final boolean CACHING_ENABLED = true;
   private static final boolean CENSOR_ENABLED = true;
 
   /**

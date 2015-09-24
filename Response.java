@@ -67,26 +67,46 @@ public class Response {
 
       // Only censor if type is text
       boolean censor = this.censorEngine != null && header.indexOf("Content-Type: text") != -1;
+
       if (censor) {
-        b = this.censorEngine.process(b, eoh + 4, -1);
+        // Write header bytes
+        writeBytes(b, eoh + 4, dests);
+
+        // Read the rest into a string and write
+        b = this.censorEngine.process(new String(b, eoh + 4, b.length - eoh - 4)).getBytes();
         len = b.length;
       }
-
-      // Write initial data
       writeBytes(b, len, dests);
 
       // Forward data
-      while ((len = this.dataSource.read(b)) > 0) {
-        // Write to all non-null streams
-        if (censor) {
-          b = this.censorEngine.process(b);
-          len = b.length;
+      if (censor) {
+        // Start reading string instead
+        BufferedReader reader = new BufferedReader(new InputStreamReader(this.dataSource));
+        // Populate writers in an ArrayList
+        ArrayList<BufferedWriter> writers = new ArrayList<BufferedWriter>();
+        for (BufferedOutputStream dest : dests) {
+          if (dest == null) continue;
+          writers.add(new BufferedWriter(new OutputStreamWriter(dest)));
         }
-        writeBytes(b, len, dests);
+        // Write to all
+        String line;
+        while ((line = reader.readLine()) != null) {
+          line = this.censorEngine.process(line);
+          for (BufferedWriter writer : writers) {
+            writer.write(line);
+            writer.newLine();
+          }
+        }
+        // Flush all
+        for (BufferedWriter writer : writers) writer.flush();
+      } else {
+        while ((len = this.dataSource.read(b)) > 0) {
+          // Write to all non-null streams
+          writeBytes(b, len, dests);
+        }
+        // Flush all streams
+        flushAll(dests);
       }
-
-      // Flush all streams
-      flushAll(dests);
     }
   }
 
