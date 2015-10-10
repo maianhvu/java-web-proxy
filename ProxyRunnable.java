@@ -98,6 +98,7 @@ public class ProxyRunnable implements Runnable {
 
       // WARNING: HARDCODE ERROR HANDLING ACTION BELOW
     } catch (IOException e) {
+      e.printStackTrace();
       if (toClient != null) {
         Response res = Response.createBadGateway();
         // Try to send this response to client

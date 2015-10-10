@@ -169,14 +169,15 @@ public class ProxyCache {
           int eofl; // End of header's first line
           for (eofl=0;eofl<len && (b[eofl] != '\r' || (new String(b, eofl, 2)).equals("\r\n")); eofl++);
           String statusCode = new String(b, 0, eofl).split("\\s+", 3)[1];
-          // If statusCode is 302 means content is not modified
-          this.valid = statusCode.equals("302");
+          // If statusCode is 304 means content is not modified
+          this.valid = statusCode.equals("304");
         }
         fromRemote.close();
         toRemote.close();
         remoteSocket.close();
       } catch (IOException e) {
         System.out.println("Error checking for modifications. Assuming cached content is fresh.");
+        e.printStackTrace();
       } finally {
         if (!this.valid) return;
         this.fromCache = new BufferedInputStream(new FileInputStream(file));

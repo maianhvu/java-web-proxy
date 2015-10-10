@@ -28,7 +28,7 @@ public class Request {
    * Constants
    */
   private static final int DEFAULT_PORT = 80;
-  private static final String URI_PATTERN = "^(?:http(?:s)?://)?([^/]+)(:\\d+)?(?:.+)?$";
+  private static final String URI_PATTERN = "^(?:http(?:s)?://)?([^/:]+)(?::(\\d+))?(?:.+)?$";
 
   /**
    * Properties
