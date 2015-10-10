@@ -96,7 +96,7 @@ public class Request {
     }
     // Find out host address from URI
     else {
-      Pattern uriPattern = Pattern.compile(URI_PATTERN);
+      Pattern uriPattern = Pattern.compile(URI_PATTERN, Pattern.CASE_INSENSITIVE);
       Matcher m = uriPattern.matcher(uri);
       // Check for matches
       if (m.matches()) {
@@ -136,7 +136,7 @@ public class Request {
     SimpleDateFormat dateFormat = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss z", Locale.ENGLISH);
     dateFormat.setTimeZone(TimeZone.getTimeZone("GMT"));
     // Use regex to parse the URI
-    Pattern uriPattern = Pattern.compile(URI_PATTERN);
+    Pattern uriPattern = Pattern.compile(URI_PATTERN, Pattern.CASE_INSENSITIVE);
     Matcher m = uriPattern.matcher(uri);
 
     // Initialize request

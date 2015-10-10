@@ -103,6 +103,8 @@ public class ProxyCache {
 
     private boolean valid;
 
+    private int endOfMetadata;
+
     /**
      * Constructor.
      * Creates a cached content from scratch, begin to write to
@@ -180,15 +182,15 @@ public class ProxyCache {
         e.printStackTrace();
       } finally {
         if (!this.valid) return;
-        this.fromCache = new BufferedInputStream(new FileInputStream(file));
-        this.fromCache.skip(eom); // Skip metadata
-
+        this.endOfMetadata = eom;
         this.valid = true;
       }
     }
 
-    public BufferedInputStream getInputStream() {
-      return this.fromCache;
+    public BufferedInputStream getInputStream() throws IOException {
+        this.fromCache = new BufferedInputStream(new FileInputStream(this.file));
+        this.fromCache.skip(this.endOfMetadata); // Skip metadata
+        return this.fromCache;
     }
 
     /**
