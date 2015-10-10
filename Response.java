@@ -57,6 +57,8 @@ public class Response {
     byte[] b = new byte[8192];
     int len;
 
+    if (this.dataSource == null) return;
+
     // Read header first. This helps to extract out header info,
     // as well as preventing the censor engine from censoring header
     if ((len = this.dataSource.read(b)) > 0) {
