@@ -173,6 +173,7 @@ public class ProxyCache {
           String statusCode = new String(b, 0, eofl).split("\\s+", 3)[1];
           // If statusCode is 304 means content is not modified
           this.valid = statusCode.equals("304");
+          System.out.printf("Status code is %s, content is%s modified and hence is%s valid.\n", statusCode, this.valid ? " not" : "", this.valid ? "": " not");
         }
         fromRemote.close();
         toRemote.close();
