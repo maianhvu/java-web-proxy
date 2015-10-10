@@ -86,7 +86,10 @@ public class ProxyCache {
     if (!contains(URI)) {
       return null;
     }
-    return this.cacheMap.get(URI);
+    CachedContent content = this.cacheMap.get(URI);
+    if (!content.isFresh()) content.refresh();
+    content.goStale();
+    return content;
   }
 
   public CachedContent create(String URI) throws IOException {
@@ -102,6 +105,7 @@ public class ProxyCache {
     private BufferedOutputStream toCache;
 
     private boolean valid;
+    private boolean fresh;
 
     private int endOfMetadata;
 
@@ -139,18 +143,23 @@ public class ProxyCache {
     public CachedContent(String uri) throws IOException {
       this.uri = uri;
       this.file = new File(pathFromURI(uri));
+      this.fresh = false;
       if (!file.exists() || file.isDirectory()) { this.valid = false; return; }
+      this.refresh();
+    }
+
+    public CachedContent refresh() throws IOException {
       BufferedInputStream queryStream = new BufferedInputStream(new FileInputStream(file));
       byte[] b = new byte[8192];
       int len = queryStream.read(b);
-      if (len <= 0) { this.valid = false; return; }
+      if (len <= 0) { this.valid = false; return this; }
       int eom; // End of metadata
       for (eom=0;eom<len && (b[eom] != '\r' || !(new String(b, eom, 2)).equals("\r\n")); eom++);
       String uriFromMeta = new String(b, 0, eom);
       if (!uriFromMeta.equals(uri)) {
         // Hash collision
         this.valid = false;
-        return;
+        return this;
       }
       int sosl = eom + 2; // Start of second line
       for (eom=sosl;eom<len &&(b[eom] != '\r' || !(new String(b, eom, 2)).equals("\r\n")); eom++);
@@ -173,7 +182,29 @@ public class ProxyCache {
           String statusCode = new String(b, 0, eofl).split("\\s+", 3)[1];
           // If statusCode is 304 means content is not modified
           this.valid = statusCode.equals("304");
-          System.out.printf("Status code is %s, content is%s modified and hence is%s valid.\n", statusCode, this.valid ? " not" : "", this.valid ? "": " not");
+          // If content is modified, update cache and return
+          if (!this.valid) {
+            BufferedOutputStream cacheUpdater = new BufferedOutputStream(
+                new FileOutputStream(this.file));
+            // Write metadata first
+            String meta = this.uri + "\r\n" + Long.toString((new Date()).getTime()) + "\r\n";
+            byte[] metaBytes = meta.getBytes();
+            int metaLength = metaBytes.length;
+            cacheUpdater.write(metaBytes, 0, metaLength);
+            // Write previously read header bytes
+            cacheUpdater.write(b, 0, len);
+            // Continue reading from remote
+            b = new byte[8192];
+            while ((len = fromRemote.read(b)) > 0) {
+              cacheUpdater.write(b, 0, len);
+            }
+            // Close updater
+            cacheUpdater.close();
+            // Now that it is updated, consider itself valid
+            this.valid = true;
+            // Set end of metadata
+            eom = metaLength;
+          }
         }
         fromRemote.close();
         toRemote.close();
@@ -182,11 +213,16 @@ public class ProxyCache {
         System.out.println("Error checking for modifications. Assuming cached content is fresh.");
         e.printStackTrace();
       } finally {
-        if (!this.valid) return;
+        if (!this.valid) return this;
+        this.fresh = true;
         this.endOfMetadata = eom;
         this.valid = true;
+        return this;
       }
     }
+
+    public void goStale() { this.fresh = false; }
+    public boolean isFresh() { return this.fresh; }
 
     public BufferedInputStream getInputStream() throws IOException {
         this.fromCache = new BufferedInputStream(new FileInputStream(this.file));
